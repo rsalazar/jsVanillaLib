@@ -1,29 +1,22 @@
 function VanillaLib( ) {
-	let  self = Object.create({});
+	'use strict';
+	let  self = { version:'1.1.180624' };
 
 	self.mapFlat = ( array,func ) => array.map( x => func(x) ).reduce( (a,b) => a.concat(b) );
 	self.parenth = ( elem,nth ) => traverse(elem, self.ifndef(nth, 1), 0);
 	self.ifndef  = ( expr,value ) => ( self.ndef(expr) ? value : expr );
 	self.ispojo  = expr => self.isobj(expr, Object);
-	self.export  = ( source,target,members ) => ( Object.keys(source).filter( key => ! members || members.includes(key) )
-	                                                                 .forEach( key => target[ key ] = source[ key ] ) );
 	self.ifnan   = ( expr,value ) => ( isNaN(expr) ? value : expr );
-	self.isobj   = ( expr,type ) => ( 'object' === typeof expr && ( ! type || self.isfn(expr.constructor)
-	                                      && type === ( self.isfn(type) ? expr.constructor : expr.constructor.name ) ) );
 	self.isarr   = expr => self.isobj(expr, Array);
 	self.isstr   = expr => ( 'string' === typeof expr );
 	self.isfn    = expr => ( 'function' === typeof expr );
 	self.ndef    = expr => ( 'undefined' === typeof expr );
 	self.test    = ( expr,func,other ) => ( !! expr ? func(expr) : self.isfn(other) ? other(expr) : other );
-	self.fire    = ( elem,event,args ) => elem.dispatchEvent( self.isobj(event) ? even
-	                                     : new Event( event, self.ifndef(args, { 'bubbles':true, 'cancelable':true }) ) );
 	self.warn    = console.warn;
 	self.log     = console.debug;
-	self.on      = ( elem,event,func ) => elem.addEventListener(event, func);
 	self.$$      = ( sel,elem ) => Array.slice((elem || document).querySelectorAll(sel));
 	self.$       = ( sel,elem ) => (elem || document).querySelector(sel);
-
-	self.aggRate = ( amount,rate,periods ) => ( ! periods ? amount : self.aggRate(amount * rate, rate, periods - 1) ),
+	self.aggRate = ( amount,rate,periods ) => ( ! periods ? amount : self.aggRate(amount * rate, rate, periods - 1) );
 	self.toDec   = expr => ( Math.round(parseFloat((expr +'').replace(/\$|,/g, '')) * 100) / 100 );
 
 
@@ -84,6 +77,19 @@ function VanillaLib( ) {
 		return  result;
 	};
 
+	self.createXHR = function( ) {
+		let  xhr = new XMLHttpRequest( );
+		xhr.onabort = function( ev, xhr ) { self.log('XHR Abort:', ev, xhr, this); };
+		xhr.onerror = function( ev, xhr ) { self.log('XHR Error:', ev, xhr, this); };
+		xhr.onload  = function( ev, xhr ) { self.log('XHR Load:',  ev, xhr, this); };
+		self.on(xhr, {
+			'abort': function( ev ) { self.isfn(this.onabort) && this.onabort(ev, this); },
+			'error': function( ev ) { self.isfn(this.onerror) && this.onerror(ev, this); },
+			'load':  function( ev ) { self.isfn(this.onload)  && this.onload(ev, this); },
+		});
+		return  xhr;
+	};
+
 	self.css = function( element, key, value ) {
 		if ( isarr(element) ) {
 			return  element.map( el => css(el, key, value) );
@@ -93,7 +99,29 @@ function VanillaLib( ) {
 		return  element;
 	};
 
+	self.fire = function( elem, event, args ) {
+		if ( self.isstr(event) ) {
+			args  = self.ifndef(args, { 'bubbles':true, 'cancelable':true });
+			event = new Event( event, args );
+		}
+		return  elem.dispatchEvent(event);
+	};
+
+	self.isobj = function( expr, type ) {
+		type = type || 'object';
+		if ( self.isfn(type) ) {
+			return  ( 'object' === typeof expr && null !== expr && type === expr.constructor );
+			// return  ( ! self.ndef(expr) && null !== expr && type === expr.constructor );
+		}
+		return  ( type === typeof expr );
+	}
+
 	self.keysAndValues = function( key, value, action ) {
+		if ( self.ndef(action) && self.isfn(value) ) {
+			action = value;
+			value  = undefined;
+		}
+
 		// Case 1: key is an object (and there is no value)
 		if ( self.isobj(key) && ! value ) {
 			return  Object.keys(key)
@@ -113,6 +141,70 @@ function VanillaLib( ) {
 		}
 	};
 
+	self.localJson = function( key, value ) {
+		if ( ! key || ! self.isstr(key) ) {
+			try {
+				if ( self.ndef(value) ) {
+					return  JSON.parse(localStorage.getItem(key));
+				} else if ( null === value ) {
+					return  localStorage.removeItem(key);
+				} else {
+					return  localStorage.setItem(key, JSON.stringify(value));
+				}
+			} catch ( error ) {
+				self.warn('* localJson() error:', error, '\n\tfor:', key, value);
+			}
+		}
+		return  null;
+	};
+
+	self.off = function( element, event, callback ) {
+		if ( self.ndef(callback) && self.isobj(event) ) {
+			return  self.keysAndValues(event, ( k,v ) => self.off(element, k, v) );
+		} else if ( self.isarr(element) ) {
+			return  element.map( elem => self.off(elem, event, callback) );
+		}
+		return  element.removeEventListener(event, callback);
+	};
+
+	self.on = function( element, event, callback ) {
+		if ( self.ndef(callback) && self.isobj(event) ) {
+			return  self.keysAndValues(event, ( k,v ) => self.on(element, k, v) );
+		} else if ( self.isarr(element) ) {
+			return  element.map( elem => self.on(elem, event, callback) );
+		}
+		return  element.addEventListener(event, callback);
+	};
+
+	self.onmutate = function( element, callback, config ) {
+		if ( !! element && self.isfn(callback) ) {
+			config = config || { 'attributes':false, 'childList':true, 'subtree':false };
+
+			if ( self.isarr(element) ) {
+				return  element.map( elem => self.onmutate(elem, callback, config) );
+			}
+
+			let  observer = new MutationObserver( callback );
+			observer.initialConfig = ( ) => config;
+			observer.reconnect = function( newConfig ) {
+				this.observe(element, newConfig || this.initialConfig());
+				return  this;
+			};
+			return  observer.reconnect();
+		}
+		return  null;
+	};
+
+	self.pojo2query = function( pojo ) {
+		if ( self.isobj(pojo) && !! pojo ) {
+			let  query = Object.keys(pojo)
+			             	.map( key => escape(key) +'='+ escape(pojo[ key ]) )
+			             	.join('&');
+			return  '?'+ query;
+		}
+		return  null;
+	};
+
 	self.prependTo = function( element, parent, reference ) {
 		if ( ! reference && !! parent ) {
 			reference = parent.childNodes[ 0 ];
@@ -127,6 +219,101 @@ function VanillaLib( ) {
 		}
 
 		return  element;
+	};
+
+	self.query2pojo = function( query ) {
+		query = (self.ifndef(query, location.search) +'')
+		        	.replace(/^[?&]+|$&+/g, '');
+		if ( !! query ) {
+			let  segs, key, val, pojo = { };
+			query.split('&')
+				.forEach( item => {
+					[ key, val ] =
+					segs         = item.split('=');
+					val = ( self.ndef(val) ? null : segs.slice(1).join('=') );
+					pojo[ unescape(key) ] = val;
+				} );
+			return  pojo;
+		}
+		return  null;
+	};
+
+	self.request = function( url, verb, data, callback ) {
+		self.log('* request of:', verb, url, data, callback);
+
+		// "Validate" HTTP Verb, to an extent
+		verb = (verb || 'GET').toUpperCase();
+		switch ( verb ) {
+			case  'P':  verb = 'POST';  break;
+			case  'G':  verb = 'GET';   break;
+			case  'H':  verb = 'HEAD';  break;
+		}
+
+		// Switch callback and data when ther is no data
+		if ( self.ndef(callback) && self.isfn(data) ) {
+			callback = data;
+			data     = null;
+		}
+
+		// Set the data to a string or null
+		data = self.ifndef(data, null);
+		data = ( !! data && self.isobj(data) ? self.pojo2query(data).replace('?', '') : data.toString() );
+		self.log('- request data:', data);
+
+		// Add data to the URL for GET requests
+		if ( 'GET' === verb && !! data ) {
+			url += ( url.includes('?') ? '&' : '?' ) + data;
+			data = null;
+		}
+
+		// Create & open XHR object...
+		let  xhr = self.createXHR();
+		self.log('-> opening request:', verb, url);
+		xhr.open(verb, url);
+		xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+		// Set the internal event handler, which removes itself on execution
+		xhr.onabort =
+		xhr.onerror =
+		xhr.onload  = callback;
+
+		// Send the actual request
+		self.log('-> sending request:', data, xhr.readyState, xhr);
+		return  xhr.send(data);
+	};
+
+	self.table2json = function( table, headers, datafilter ) {
+		if ( !! table ) {
+			let  obj = { head:[ ], data:[ ] },
+			     row, temp;
+
+			if ( self.isfn(headers) ) {
+				obj.head = headers(table);
+			} else {
+				obj.head = Array.slice(table.rows[ 0 ].cells).map( th => th.innerText.trim() );
+			}
+
+			if ( obj.head.length ) {
+				datafilter = datafilter || (( row,i ) => ( i && 'TBODY' === row.parentNode.nodeName ));
+
+				for ( let  r = 0, nr = table.rows.length;  r < nr;  r ++ ) {
+					row = table.rows[ r ];
+
+					if ( datafilter(row, r) ) {
+						let   item = { };
+						//temp = obj.head.map( ( col,i ) => row.cells[ i ].innerText.trim() );
+						// Get data only for columns with a header
+						obj.head.forEach( ( col,i ) => {
+							col[ 0 ] && (item[ col ] = row.cells[ i ].innerText.trim());
+						} );
+						obj.data.push(item);
+					}
+				}
+			}
+
+			return  obj.data;
+		}
+		return  null;
 	};
 
 	self.toDec2 = function( amount ) {
@@ -157,6 +344,8 @@ function VanillaLib( ) {
 		return  ( ! lastIfNull ? elem : elem || last );
 	};
 
+	// ----------------------------------------------------
+	// Intended for Internal Use
 
 	self.copyMembers = function( source, target, members, preserve ) {
 		//self.log('* Copying from', source, '\n\tto', target, '\n\t'+ members, preserve);
@@ -167,7 +356,7 @@ function VanillaLib( ) {
 
 		let  names = Object.keys(source);
 		preserve = ( self.isobj(preserve) ? preserve : false );
-		//self.log('- Full list of members:', names);
+		//self.log('- Full list of members:', names, '\n\t', source);
 
 		if ( self.isstr(members) ) {
 			members = members.split(',').map( nm => nm.trim() );
@@ -195,7 +384,10 @@ function VanillaLib( ) {
 		if ( ! scope ) {
 			return  false;
 		}
-		return  self.copyMembers(this, scope, members, overwriten);
+		if ( '*' === (members +'').trim() ) {
+			members = null;
+		}
+		return  self.copyMembers(self, scope, members, overwriten);
 	};
 
 	// Avoid needing a 'new' operator; this is just a wrapper
