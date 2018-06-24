@@ -1,6 +1,6 @@
 function VanillaLib( ) {
 	'use strict';
-	let  self = { version:'1.1.180624' };
+	let  self = { version:'1.1.180624.1835' };
 
 	self.mapFlat = ( array,func ) => array.map( x => func(x) ).reduce( (a,b) => a.concat(b) );
 	self.parenth = ( elem,nth ) => traverse(elem, self.ifndef(nth, 1), 0);
@@ -16,8 +16,18 @@ function VanillaLib( ) {
 	self.log     = console.debug;
 	self.$$      = ( sel,elem ) => Array.slice((elem || document).querySelectorAll(sel));
 	self.$       = ( sel,elem ) => (elem || document).querySelector(sel);
+
 	self.aggRate = ( amount,rate,periods ) => ( ! periods ? amount : self.aggRate(amount * rate, rate, periods - 1) );
 	self.toDec   = expr => ( Math.round(parseFloat((expr +'').replace(/\$|,/g, '')) * 100) / 100 );
+
+	self.secondsIn    = ( from,to,other ) => self.ifnan((to - from) /    1000, self.ifndef(other, NaN));
+	self.minutesIn    = ( from,to,other ) => self.ifnan((to - from) /   60000, self.ifndef(other, NaN));
+	self.hoursIn      = ( from,to,other ) => self.ifnan((to - from) /  360000, self.ifndef(other, NaN));
+	self.daysIn       = ( from,to,other ) => self.ifnan((to - from) / 8640000, self.ifndef(other, NaN));
+	self.secondsSince = ( from,other ) => self.secondsIn(from, Date.now(), other);
+	self.minutesSince = ( from,other ) => self.minutesIn(from, Date.now(), other);
+	self.hoursSince   = ( from,other ) => self.hoursIn(from,   Date.now(), other);
+	self.daysSince    = ( from,other ) => self.daysIn(from,    Date.now(), other);
 
 
 	self.appendTo = function( element, parent, reference ) {
@@ -142,7 +152,7 @@ function VanillaLib( ) {
 	};
 
 	self.localJson = function( key, value ) {
-		if ( ! key || ! self.isstr(key) ) {
+		if ( !! key && self.isstr(key) ) {
 			try {
 				if ( self.ndef(value) ) {
 					return  JSON.parse(localStorage.getItem(key));
@@ -282,27 +292,23 @@ function VanillaLib( ) {
 		return  xhr.send(data);
 	};
 
-	self.table2json = function( table, headers, datafilter ) {
-		if ( !! table ) {
-			let  obj = { head:[ ], data:[ ] },
-			     row, temp;
+	self.table2json = function( table, headers, filter ) {
+		if ( !! table && !! table.rows ) {
+			let  obj = { head:[ ], data:[ ] };
 
-			if ( self.isfn(headers) ) {
-				obj.head = headers(table);
-			} else {
-				obj.head = Array.slice(table.rows[ 0 ].cells).map( th => th.innerText.trim() );
+			obj.head = ( self.isfn(headers) ? headers(table) : table.rows[ 0 ] );
+			if ( self.isobj(obj.head) && !! obj.head.cells ) {
+				obj.head = Array.map(obj.head.cells, th => th.innerText.trim() );
 			}
 
 			if ( obj.head.length ) {
-				datafilter = datafilter || (( row,i ) => ( i && 'TBODY' === row.parentNode.nodeName ));
+				filter = filter || (( row,i ) => ( i && 'TBODY' === row.parentNode.nodeName ));
 
 				for ( let  r = 0, nr = table.rows.length;  r < nr;  r ++ ) {
-					row = table.rows[ r ];
+					let  row = table.rows[ r ];
 
-					if ( datafilter(row, r) ) {
+					if ( filter(row, r) ) {
 						let   item = { };
-						//temp = obj.head.map( ( col,i ) => row.cells[ i ].innerText.trim() );
-						// Get data only for columns with a header
 						obj.head.forEach( ( col,i ) => {
 							col[ 0 ] && (item[ col ] = row.cells[ i ].innerText.trim());
 						} );
@@ -310,7 +316,6 @@ function VanillaLib( ) {
 					}
 				}
 			}
-
 			return  obj.data;
 		}
 		return  null;
