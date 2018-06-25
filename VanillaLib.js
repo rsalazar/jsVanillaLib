@@ -20,10 +20,10 @@ function VanillaLib( ) {
 	self.aggRate = ( amount,rate,periods ) => ( ! periods ? amount : self.aggRate(amount * rate, rate, periods - 1) );
 	self.toDec   = expr => ( Math.round(parseFloat((expr +'').replace(/\$|,/g, '')) * 100) / 100 );
 
-	self.secondsIn    = ( from,to,other ) => self.ifnan((to - from) /    1000, self.ifndef(other, NaN));
-	self.minutesIn    = ( from,to,other ) => self.ifnan((to - from) /   60000, self.ifndef(other, NaN));
-	self.hoursIn      = ( from,to,other ) => self.ifnan((to - from) /  360000, self.ifndef(other, NaN));
-	self.daysIn       = ( from,to,other ) => self.ifnan((to - from) / 8640000, self.ifndef(other, NaN));
+	self.secondsIn    = ( from,to,other ) => self.ifnan((to - from) /     1000, self.ifndef(other, NaN));
+	self.minutesIn    = ( from,to,other ) => self.ifnan((to - from) /    60000, self.ifndef(other, NaN));
+	self.hoursIn      = ( from,to,other ) => self.ifnan((to - from) /  3600000, self.ifndef(other, NaN));
+	self.daysIn       = ( from,to,other ) => self.ifnan((to - from) / 86400000, self.ifndef(other, NaN));
 	self.secondsSince = ( from,other ) => self.secondsIn(from, Date.now(), other);
 	self.minutesSince = ( from,other ) => self.minutesIn(from, Date.now(), other);
 	self.hoursSince   = ( from,other ) => self.hoursIn(from,   Date.now(), other);
