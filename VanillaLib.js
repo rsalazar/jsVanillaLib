@@ -1,6 +1,6 @@
 function VanillaLib( ) {
 	'use strict';
-	let  self = { version:'1.1.180624.1835' };
+	let  self = { version:'1.1.180624.2105' };
 
 	self.mapFlat = ( array,func ) => array.map( x => func(x) ).reduce( (a,b) => a.concat(b) );
 	self.parenth = ( elem,nth ) => traverse(elem, self.ifndef(nth, 1), 0);
