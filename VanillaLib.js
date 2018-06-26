@@ -1,6 +1,6 @@
 function VanillaLib( ) {
 	'use strict';
-	let  self = { version:'1.1.180624.2105' };
+	let  self = { version:'1.1.180625.2008' };
 
 	self.mapFlat = ( array,func ) => array.map( x => func(x) ).reduce( (a,b) => a.concat(b) );
 	self.parenth = ( elem,nth ) => traverse(elem, self.ifndef(nth, 1), 0);
@@ -30,6 +30,21 @@ function VanillaLib( ) {
 	self.daysSince    = ( from,other ) => self.daysIn(from,    Date.now(), other);
 
 
+	self.addClass = function( element, name ) {
+		if ( !! element && !! name ) {
+			if ( self.isarr(element) ) {
+				return  element.map( elem => self.addClass(elem, name) );
+			}
+
+			name = ( self.isarr(name) ? name : name.split(',') );
+			name = name.map( nm => nm.trim() )
+			       	.filter( nm => ! element.classList.contains(nm) );
+			element.className = (element.className +' '+ name.join(' ')).trim();
+			return  true;
+		}
+		return  false;
+	};
+
 	self.appendTo = function( element, parent, reference ) {
 		if ( !! reference ) {
 			parent    = reference.parentNode;
@@ -56,6 +71,10 @@ function VanillaLib( ) {
 		return  elem;
 	};
 
+	self.choose = function( index, values ) {
+		return  Array.slice(arguments)[ index ];
+	}
+
 	self.create = function( html, containerType ) {
 		let  container = null,
 		     result    = null,
@@ -69,7 +88,7 @@ function VanillaLib( ) {
 
 		containerType = containerType || 'div';
 		create[ containerType ] =
-		container               = create[ containerType ] || document.createElement(containerType);
+		container               = self.create[ containerType ] || document.createElement(containerType);
 		container.innerHTML = html;
 		result = Array.slice(container.childNodes)
 		         	.map( elem => (elem.remove(), elem) );
@@ -118,12 +137,16 @@ function VanillaLib( ) {
 	};
 
 	self.isobj = function( expr, type ) {
-		type = type || 'object';
-		if ( self.isfn(type) ) {
-			return  ( 'object' === typeof expr && null !== expr && type === expr.constructor );
-			// return  ( ! self.ndef(expr) && null !== expr && type === expr.constructor );
+		if ( !! type ) {
+			if ( 'object' !== typeof expr || null === expr ) {
+				return  false;
+			} else if ( self.isfn(type) ) {
+				return  ( type === expr.constructor );
+			} else if ( self.isstr(type) ) {
+				return  ( !! expr.constructor && type === expr.constructor.name );
+			}
 		}
-		return  ( type === typeof expr );
+		return  ( 'object' === typeof expr );
 	}
 
 	self.keysAndValues = function( key, value, action ) {
