@@ -1,6 +1,7 @@
 function VanillaLib( ) {
 	'use strict';
-	let  self = { version:'1.2.180626.2126' };
+	let  self = { version:'1.2.180627.1855' },
+	     undefined;  // ensure an 'undefined' reference
 
 	// Logging related
 	self.logging  = true;
@@ -12,7 +13,8 @@ function VanillaLib( ) {
 	self.log      = function( ) { return ! self.logging ? false : console.debug.apply(console, arguments); };
 	// Core functionality
 	self.ownsIt = ( obj,prop ) => ( !! prop && self.isobj(obj, true) && obj.hasOwnProperty(prop) );
-	self.hasval = expr => ( null !== expr && undefined !== expr );
+	self.hasval = expr => ( null !== expr && ! self.ndef(expr) );
+	self.isbool = expr => ( 'boolean' === typeof expr );
 	self.ifndef = ( expr,value ) => ( self.ndef(expr) ? value : expr );
 	self.ifnan  = ( expr,value ) => ( isNaN(expr) ? value : expr );
 	self.isarr  = expr => self.isobj(expr, Array);
@@ -29,7 +31,7 @@ function VanillaLib( ) {
 	self.$$      = ( sel,elem ) => Array.slice((elem || document).querySelectorAll(sel));
 	self.$       = ( sel,elem ) => (elem || document).querySelector(sel);
 	// Number related
-	self.aggRate = ( amount,rate,periods ) => ( ! periods ? amount : self.aggRate(amount * rate, rate, periods - 1) );
+	self.aggRate = ( amnt,rate,times ) => ( times < 1 ? amnt : self.aggRate(amnt * rate, rate, times - 1) );
 	self.toDec   = expr => ( Math.round(parseFloat((expr +'').replace(/\$|,/g, '')) * 100) / 100 );
 	// Time related
 	self.secondsIn    = ( from,to,other ) => self.ifnan((to - from) /     1000, self.ifndef(other, NaN));
@@ -74,13 +76,18 @@ function VanillaLib( ) {
 		return  element;
 	};
 
-	self.attr = function( elem, name, value ) {
-		if ( self.isarr(elem) ) {
-			return  elem.map( el => self.attr(el, name, value) );
-		}
+	self.attr = function( element, name, value ) {
+		if ( !! element ) {
+			if ( self.isarr(element) ) {
+				return  element.map( elem => self.attr(elem, name, value) );
+			}
 
-		self.keysAndValues(name, value, ( n,v ) => ( null === v ? elem.removeAttribute(n) : elem.setAttribute(n, v) ) );
-		return  elem;
+			return  self.keysAndValues(name, value, ( n,v ) => {
+				return  ( self.hasval(v) ? element.setAttribute(n, v)
+				          : null === v ? element.removeAttribute(n) : element.getAttribute(n) );
+			} );
+		}
+		return  element;
 	};
 
 	self.choose = function( index, values ) {
