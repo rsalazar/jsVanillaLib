@@ -1,15 +1,15 @@
 function VanillaLib( ) {
 	'use strict';
-	let  self = { version:'1.2.180626.2031' };
+	let  self = { version:'1.2.180626.2120' };
 
 	// Logging related
 	self.logging  = true;
-	self.logGroup = ( ! self.logging ? false : console.groupCollapsed.apply(console, arguments) );
-	self.logEnd   = ( ! self.logging ? false : console.groupEnd.apply(console, arguments) );
-	self.time     = ( ! self.logging ? false : console.time.apply(console, arguments) );
-	self.timeEnd  = ( ! self.logging ? false : console.timeEnd.apply(console, arguments) );
-	self.warn     = ( ! self.logging ? false : console.warn.apply(console, arguments) );
-	self.log      = ( ! self.logging ? false : console.debug.apply(console, arguments) );
+	self.logGroup = function( ) { return ! self.logging ? false : console.groupCollapsed.apply(console, arguments); };
+	self.logEnd   = function( ) { return ! self.logging ? false : console.groupEnd.apply(console, arguments); };
+	self.time     = function( ) { return ! self.logging ? false : console.time.apply(console, arguments); };
+	self.timeEnd  = function( ) { return ! self.logging ? false : console.timeEnd.apply(console, arguments); };
+	self.warn     = function( ) { return ! self.logging ? false : console.warn.apply(console, arguments); };
+	self.log      = function( ) { return ! self.logging ? false : console.debug.apply(console, arguments); };
 	// Core functionality
 	self.ownsIt = ( obj,prop ) => ( !! prop && self.isobj(obj, true) && obj.hasOwnProperty(prop) );
 	self.hasval = expr => ( null !== expr && undefined !== expr );
