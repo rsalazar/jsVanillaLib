@@ -1,6 +1,6 @@
 function VanillaLib( ) {
 	'use strict';
-	let  self = { version:'1.2.180626.2120' };
+	let  self = { version:'1.2.180626.2126' };
 
 	// Logging related
 	self.logging  = true;
@@ -141,7 +141,7 @@ function VanillaLib( ) {
 	};
 
 	self.extend = function( target, sources ) {
-		for ( let  i = 1, n = arguments.lenght;  i < n;  i ++ ) {
+		for ( let  i = 1, n = arguments.length;  i < n;  i ++ ) {
 			self.isobj(arguments[ i ], true) && self.copyMembers(arguments[ i ], target);
 		}
 		return  target;
