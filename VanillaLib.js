@@ -1,25 +1,37 @@
 function VanillaLib( ) {
 	'use strict';
-	let  self = { version:'1.1.180625.2008' };
+	let  self = { version:'1.2.180626.2031' };
 
+	// Logging related
+	self.logging  = true;
+	self.logGroup = ( ! self.logging ? false : console.groupCollapsed.apply(console, arguments) );
+	self.logEnd   = ( ! self.logging ? false : console.groupEnd.apply(console, arguments) );
+	self.time     = ( ! self.logging ? false : console.time.apply(console, arguments) );
+	self.timeEnd  = ( ! self.logging ? false : console.timeEnd.apply(console, arguments) );
+	self.warn     = ( ! self.logging ? false : console.warn.apply(console, arguments) );
+	self.log      = ( ! self.logging ? false : console.debug.apply(console, arguments) );
+	// Core functionality
+	self.ownsIt = ( obj,prop ) => ( !! prop && self.isobj(obj, true) && obj.hasOwnProperty(prop) );
+	self.hasval = expr => ( null !== expr && undefined !== expr );
+	self.ifndef = ( expr,value ) => ( self.ndef(expr) ? value : expr );
+	self.ifnan  = ( expr,value ) => ( isNaN(expr) ? value : expr );
+	self.isarr  = expr => self.isobj(expr, Array);
+	self.isstr  = expr => ( 'string' === typeof expr );
+	self.isfn   = expr => ( 'function' === typeof expr );
+	self.ndef   = expr => ( 'undefined' === typeof expr );
+	// Miscelaneous
 	self.mapFlat = ( array,func ) => array.map( x => func(x) ).reduce( (a,b) => a.concat(b) );
-	self.parenth = ( elem,nth ) => traverse(elem, self.ifndef(nth, 1), 0);
-	self.ifndef  = ( expr,value ) => ( self.ndef(expr) ? value : expr );
 	self.ispojo  = expr => self.isobj(expr, Object);
-	self.ifnan   = ( expr,value ) => ( isNaN(expr) ? value : expr );
-	self.isarr   = expr => self.isobj(expr, Array);
-	self.isstr   = expr => ( 'string' === typeof expr );
-	self.isfn    = expr => ( 'function' === typeof expr );
-	self.ndef    = expr => ( 'undefined' === typeof expr );
 	self.test    = ( expr,func,other ) => ( !! expr ? func(expr) : self.isfn(other) ? other(expr) : other );
-	self.warn    = console.warn;
-	self.log     = console.debug;
+	self.toArray = expr => Array.slice(expr);
+	// DOM related
+	self.parenth = ( elem,nth ) => traverse(elem, self.ifndef(nth, 1), 0);
 	self.$$      = ( sel,elem ) => Array.slice((elem || document).querySelectorAll(sel));
 	self.$       = ( sel,elem ) => (elem || document).querySelector(sel);
-
+	// Number related
 	self.aggRate = ( amount,rate,periods ) => ( ! periods ? amount : self.aggRate(amount * rate, rate, periods - 1) );
 	self.toDec   = expr => ( Math.round(parseFloat((expr +'').replace(/\$|,/g, '')) * 100) / 100 );
-
+	// Time related
 	self.secondsIn    = ( from,to,other ) => self.ifnan((to - from) /     1000, self.ifndef(other, NaN));
 	self.minutesIn    = ( from,to,other ) => self.ifnan((to - from) /    60000, self.ifndef(other, NaN));
 	self.hoursIn      = ( from,to,other ) => self.ifnan((to - from) /  3600000, self.ifndef(other, NaN));
@@ -128,6 +140,13 @@ function VanillaLib( ) {
 		return  element;
 	};
 
+	self.extend = function( target, sources ) {
+		for ( let  i = 1, n = arguments.lenght;  i < n;  i ++ ) {
+			self.isobj(arguments[ i ], true) && self.copyMembers(arguments[ i ], target);
+		}
+		return  target;
+	};
+
 	self.fire = function( elem, event, args ) {
 		if ( self.isstr(event) ) {
 			args  = self.ifndef(args, { 'bubbles':true, 'cancelable':true });
@@ -137,16 +156,16 @@ function VanillaLib( ) {
 	};
 
 	self.isobj = function( expr, type ) {
-		if ( !! type ) {
-			if ( 'object' !== typeof expr || null === expr ) {
-				return  false;
-			} else if ( self.isfn(type) ) {
-				return  ( type === expr.constructor );
-			} else if ( self.isstr(type) ) {
-				return  ( !! expr.constructor && type === expr.constructor.name );
-			}
+		if ( 'object' !== typeof expr ) {
+			return  false;
+		} else if ( true === type ) {
+			return  ( null !== expr );
+		} else if ( self.isfn(type) ) {
+			return  ( type === expr.constructor );
+		} else if ( self.isstr(type) ) {
+			return  ( !! expr.constructor && type === expr.constructor.name );
 		}
-		return  ( 'object' === typeof expr );
+		return  true;
 	}
 
 	self.keysAndValues = function( key, value, action ) {
