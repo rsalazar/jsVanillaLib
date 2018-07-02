@@ -1,6 +1,6 @@
 function VanillaLib( ) {
 	'use strict';
-	let  self = { version:'1.2.180701.2206' },
+	let  self = { version:'1.2.180702.0744' },
 	     undefined;  // ensure an 'undefined' reference
 
 	// Logging related
@@ -372,9 +372,9 @@ function VanillaLib( ) {
 		return  null;
 	};
 
-	lib.toArray = function( expr ) {
-		if ( lib.hasval(expr) && ! lib.isarr(expr) ) {
-			return  ( lib.ndef(expr.length) ? [ expr ] : Array.slice(expr) );
+	self.toArray = function( expr ) {
+		if ( self.hasval(expr) && ! self.isarr(expr) ) {
+			return  ( self.ndef(expr.length) ? [ expr ] : Array.slice(expr) );
 		}
 		return  expr || [ ];
 	};
