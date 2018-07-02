@@ -1,6 +1,6 @@
 function VanillaLib( ) {
 	'use strict';
-	let  self = { version:'1.2.180627.1855' },
+	let  self = { version:'1.2.180701.2206' },
 	     undefined;  // ensure an 'undefined' reference
 
 	// Logging related
@@ -18,6 +18,7 @@ function VanillaLib( ) {
 	self.ifndef = ( expr,value ) => ( self.ndef(expr) ? value : expr );
 	self.ifnan  = ( expr,value ) => ( isNaN(expr) ? value : expr );
 	self.isarr  = expr => self.isobj(expr, Array);
+	self.isnum  = expr => ( 'number' === typeof expr );
 	self.isstr  = expr => ( 'string' === typeof expr );
 	self.isfn   = expr => ( 'function' === typeof expr );
 	self.ndef   = expr => ( 'undefined' === typeof expr );
@@ -25,9 +26,10 @@ function VanillaLib( ) {
 	self.mapFlat = ( array,func ) => array.map( x => func(x) ).reduce( (a,b) => a.concat(b) );
 	self.ispojo  = expr => self.isobj(expr, Object);
 	self.test    = ( expr,func,other ) => ( !! expr ? func(expr) : self.isfn(other) ? other(expr) : other );
-	self.toArray = expr => Array.slice(expr);
 	// DOM related
-	self.parenth = ( elem,nth ) => traverse(elem, self.ifndef(nth, 1), 0);
+	self.parenth = ( elem,nth ) => self.traverse(elem, self.ifndef(nth, 1), 0);
+	self.html    = ( elem,val ) => self.test(elem, el => self.ndef(val) ? el.innerHTML : (el.innerHTML = val) );
+	self.text    = ( elem,val ) => self.test(elem, el => self.ndef(val) ? el.innerText : (el.innerText = val) );
 	self.$$      = ( sel,elem ) => Array.slice((elem || document).querySelectorAll(sel));
 	self.$       = ( sel,elem ) => (elem || document).querySelector(sel);
 	// Number related
@@ -368,6 +370,13 @@ function VanillaLib( ) {
 			return  obj.data;
 		}
 		return  null;
+	};
+
+	lib.toArray = function( expr ) {
+		if ( lib.hasval(expr) && ! lib.isarr(expr) ) {
+			return  ( lib.ndef(expr.length) ? [ expr ] : Array.slice(expr) );
+		}
+		return  expr || [ ];
 	};
 
 	self.toDec2 = function( amount ) {
