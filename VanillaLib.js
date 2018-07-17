@@ -1,6 +1,6 @@
 function VanillaLib( ) {
 	'use strict';
-	let  self = { version:'1.2.180702.0744' },
+	let  self = { version:'1.2.180716.2324' },
 	     undefined;  // ensure an 'undefined' reference
 
 	// Logging related
@@ -62,6 +62,10 @@ function VanillaLib( ) {
 	};
 
 	self.appendTo = function( element, parent, reference ) {
+		if ( self.isarr(element) ) {
+			return  element.map( elem => self.appendTo(elem, parent, reference) );
+		}
+
 		if ( !! reference ) {
 			parent    = reference.parentNode;
 			reference = reference.nextSibling;
@@ -142,7 +146,7 @@ function VanillaLib( ) {
 
 	self.css = function( element, key, value ) {
 		if ( isarr(element) ) {
-			return  element.map( el => css(el, key, value) );
+			return  element.map( elem => self.css(elem, key, value) );
 		}
 
 		keysAndValues(key, value, ( k,v ) => element.style[ k ] = v );
@@ -156,12 +160,16 @@ function VanillaLib( ) {
 		return  target;
 	};
 
-	self.fire = function( elem, event, args ) {
+	self.fire = function( element, event, args ) {
+		if ( isarr(element) ) {
+			return  element.map( elem => self.fire(elem, event, args) );
+		}
+
 		if ( self.isstr(event) ) {
 			args  = self.ifndef(args, { 'bubbles':true, 'cancelable':true });
 			event = new Event( event, args );
 		}
-		return  elem.dispatchEvent(event);
+		return  element.dispatchEvent(event);
 	};
 
 	self.isobj = function( expr, type ) {
@@ -267,6 +275,10 @@ function VanillaLib( ) {
 	};
 
 	self.prependTo = function( element, parent, reference ) {
+		if ( isarr(element) ) {
+			return  element.map( elem => self.prependTo(elem, parent, reference) );
+		}
+
 		if ( ! reference && !! parent ) {
 			reference = parent.childNodes[ 0 ];
 		}
@@ -405,6 +417,17 @@ function VanillaLib( ) {
 		}
 
 		return  ( ! lastIfNull ? elem : elem || last );
+	};
+
+	self.wrapWith = function( content, wrapper ) {
+		let  wrap = self.toArray( self.isstr(wrapper) ? self.create(wrapper) : wrapper )[ 0 ];
+		if ( !! content && !! wrap ) {
+			let  cont = self.toArray(content);
+
+			self.prependTo(wrap, null, cont[ 0 ]);
+			cont.forEach( c => self.appendTo(c, wrap) );
+		}
+		return  wrap;
 	};
 
 	// ----------------------------------------------------
