@@ -1,30 +1,33 @@
 function VanillaLib( ) {
 	'use strict';
-	let  self = { version:'1.2.180716.2324' },
+	let  self = { version:'1.2.180826.1519' },
 	     undefined;  // ensure an 'undefined' reference
 
 	// Logging related
 	self.logging  = true;
-	self.logGroup = function( ) { return ! self.logging ? false : console.groupCollapsed.apply(console, arguments); };
-	self.logEnd   = function( ) { return ! self.logging ? false : console.groupEnd.apply(console, arguments); };
-	self.time     = function( ) { return ! self.logging ? false : console.time.apply(console, arguments); };
-	self.timeEnd  = function( ) { return ! self.logging ? false : console.timeEnd.apply(console, arguments); };
-	self.warn     = function( ) { return ! self.logging ? false : console.warn.apply(console, arguments); };
-	self.log      = function( ) { return ! self.logging ? false : console.debug.apply(console, arguments); };
-	// Core functionality
+	self.log      = function( ) { return  ! self.logging ? false : console.debug.apply(console, arguments); };
+	self.logGroup = function( ) { return  ! self.logging ? false : console.groupCollapsed.apply(console, arguments); };
+	self.logEnd   = function( ) { return  ! self.logging ? false : console.groupEnd.apply(console, arguments); };
+	self.time     = function( ) { return  ! self.logging ? false : console.time.apply(console, arguments); };
+	self.timeEnd  = function( ) { return  ! self.logging ? false : console.timeEnd.apply(console, arguments); };
+	self.warn     = function( ) { return  ! self.logging ? false : console.warn.apply(console, arguments); };
+	// Informative functionality
+	self.isobj  = ( expr,type ) => ( 'object' === typeof expr && ( ! type || null !== expr && ( true === type ||
+	             !! expr.constructor && type === ( self.isstr(type) ? expr.constructor.name : expr.constructor ) ) ) );
 	self.ownsIt = ( obj,prop ) => ( !! prop && self.isobj(obj, true) && obj.hasOwnProperty(prop) );
 	self.hasval = expr => ( null !== expr && ! self.ndef(expr) );
 	self.isbool = expr => ( 'boolean' === typeof expr );
-	self.ifndef = ( expr,value ) => ( self.ndef(expr) ? value : expr );
 	self.ifnan  = ( expr,value ) => ( isNaN(expr) ? value : expr );
+	self.ifndef = ( expr,value ) => ( self.ndef(expr) ? value : expr );
+	self.ispojo = expr => self.isobj(expr, Object);
 	self.isarr  = expr => self.isobj(expr, Array);
 	self.isnum  = expr => ( 'number' === typeof expr );
 	self.isstr  = expr => ( 'string' === typeof expr );
 	self.isfn   = expr => ( 'function' === typeof expr );
+	self.defn   = expr => ( 'undefined' !== typeof expr );
 	self.ndef   = expr => ( 'undefined' === typeof expr );
 	// Miscelaneous
 	self.mapFlat = ( array,func ) => array.map( x => func(x) ).reduce( (a,b) => a.concat(b) );
-	self.ispojo  = expr => self.isobj(expr, Object);
 	self.test    = ( expr,func,other ) => ( !! expr ? func(expr) : self.isfn(other) ? other(expr) : other );
 	// DOM related
 	self.parenth = ( elem,nth ) => self.traverse(elem, self.ifndef(nth, 1), 0);
@@ -34,8 +37,10 @@ function VanillaLib( ) {
 	self.$       = ( sel,elem ) => (elem || document).querySelector(sel);
 	// Number related
 	self.aggRate = ( amnt,rate,times ) => ( times < 1 ? amnt : self.aggRate(amnt * rate, rate, times - 1) );
+	self.between = ( value,from,to,open ) => ( from > to ? self.between(value, to, from, open)
+	                                         : open ? from < value && value < to : from <= value && value <= to );
 	self.toDec   = expr => ( Math.round(parseFloat((expr +'').replace(/\$|,/g, '')) * 100) / 100 );
-	// Time related
+	// Date/Time related
 	self.secondsIn    = ( from,to,other ) => self.ifnan((to - from) /     1000, self.ifndef(other, NaN));
 	self.minutesIn    = ( from,to,other ) => self.ifnan((to - from) /    60000, self.ifndef(other, NaN));
 	self.hoursIn      = ( from,to,other ) => self.ifnan((to - from) /  3600000, self.ifndef(other, NaN));
@@ -52,6 +57,7 @@ function VanillaLib( ) {
 				return  element.map( elem => self.addClass(elem, name) );
 			}
 
+			// ToDo: Use .classList if available
 			name = ( self.isarr(name) ? name : name.split(',') );
 			name = name.map( nm => nm.trim() )
 			       	.filter( nm => ! element.classList.contains(nm) );
@@ -160,6 +166,29 @@ function VanillaLib( ) {
 		return  target;
 	};
 
+	self.extendProperties = function( target, source, overwrite, writable, enumerable, configurable ) {
+		if ( !! target && !! source ) {
+			overwrite    = !! overwrite;
+			writable     = !! writable;
+			enumerable   = !! enumerable;
+			configurable = !! configurable;
+
+			if ( self.isarr(source) ) {
+				for ( let  i = 0, n = source.length;  i < n;  i ++ ) {
+					self.extendProperties(target, source[ i ], overwrite, writable, enumerable, configurable);
+				}
+			} else if ( self.isobj(source, true) ) {
+				for ( let  prop in source ) {
+					if ( overwrite || self.ndef(target[ prop ]) ) {
+						Object.defineProperty(target, prop,
+						                      self.propDef(source[ prop ], writable, enumerable, configurable));
+					}
+				}
+			}
+		}
+		return  target;
+	};
+
 	self.fire = function( element, event, args ) {
 		if ( isarr(element) ) {
 			return  element.map( elem => self.fire(elem, event, args) );
@@ -171,19 +200,6 @@ function VanillaLib( ) {
 		}
 		return  element.dispatchEvent(event);
 	};
-
-	self.isobj = function( expr, type ) {
-		if ( 'object' !== typeof expr ) {
-			return  false;
-		} else if ( true === type ) {
-			return  ( null !== expr );
-		} else if ( self.isfn(type) ) {
-			return  ( type === expr.constructor );
-		} else if ( self.isstr(type) ) {
-			return  ( !! expr.constructor && type === expr.constructor.name );
-		}
-		return  true;
-	}
 
 	self.keysAndValues = function( key, value, action ) {
 		if ( self.ndef(action) && self.isfn(value) ) {
@@ -208,6 +224,22 @@ function VanillaLib( ) {
 		} else {
 			return  action(key, value);
 		}
+	};
+
+	self.lazy = function( func, storage ) {
+		// If the argument is a function (expected), set it as lazy getter
+		if ( self.isfn(func) ) {
+			let  name = 'initializer::'+ Math.random(),
+			     me   = self.lazy;
+			storage = storage || me.storage || (me.storage = { });
+			return  ( ) => ( self.defn(storage[ name ]) ? storage[ name ] : (storage[ name ] = func()) );
+		// If the argument was "something" else (not undefined), set it as the result
+		} else if ( self.defn(func) ) {
+			return  ( ) => func;
+		}
+		// Otherwise: No idea
+		throw  'lazy(): The first argument (lazy getter / value) must be provided';
+		//return  null;
 	};
 
 	self.localJson = function( key, value ) {
@@ -275,12 +307,12 @@ function VanillaLib( ) {
 	};
 
 	self.prependTo = function( element, parent, reference ) {
-		if ( isarr(element) ) {
-			return  element.map( elem => self.prependTo(elem, parent, reference) );
-		}
-
 		if ( ! reference && !! parent ) {
 			reference = parent.childNodes[ 0 ];
+		}
+
+		if ( isarr(element) ) {
+			return  element.map( elem => self.prependTo(elem, parent, reference) );
 		}
 
 		if ( !! reference ) {
@@ -294,6 +326,26 @@ function VanillaLib( ) {
 		return  element;
 	};
 
+	self.propDef = function( value, writable, enumerable, configurable ) {
+		enumerable = !! enumerable;
+		var  def = {
+			'enumerable':   enumerable,
+			'configurable': !! configurable,
+		};
+
+		if ( self.isfn(value) && ( enumerable || self.isfn(writable) ) ) {
+			def.get = value;
+			if ( self.isfn(writable) ) {
+				def.set = writable;
+			}
+		} else {
+			def.value    = value;
+			def.writable = !! writable;
+		}
+
+		return  def;
+	}
+
 	self.query2pojo = function( query ) {
 		query = (self.ifndef(query, location.search) +'')
 		        	.replace(/^[?&]+|$&+/g, '');
@@ -304,11 +356,24 @@ function VanillaLib( ) {
 					[ key, val ] =
 					segs         = item.split('=');
 					val = ( self.ndef(val) ? null : segs.slice(1).join('=') );
-					pojo[ unescape(key) ] = val;
+					pojo[ unescape(key) ] = unescape(val);
 				} );
 			return  pojo;
 		}
 		return  null;
+	};
+
+	self.range = function( from, to, inc ) {
+		inc = ( ! inc || isNaN(inc) ? 1 : inc );
+		if ( from == to - inc ) {
+			return  [ from, to ];
+		} else if ( from == to ) {
+			return  [ to ];
+		} else if ( (to - from) % inc || ! self.between(from + inc, from, to) ) {
+			throw  'Cannot create range '+ from +'..'+ to +' with increments of '+ inc;
+			//return  null ;//[ ];
+		}
+		return  self.range(from, to - inc, inc).concat(to);
 	};
 
 	self.request = function( url, verb, data, callback ) {
@@ -420,15 +485,35 @@ function VanillaLib( ) {
 	};
 
 	self.wrapWith = function( content, wrapper ) {
-		let  wrap = self.toArray( self.isstr(wrapper) ? self.create(wrapper) : wrapper )[ 0 ];
-		if ( !! content && !! wrap ) {
-			let  cont = self.toArray(content);
+		let  wrap = content;
+		if ( !! content && !! wrapper ) {
+			wrap = self.toArray( self.isstr(wrapper) ? self.create(wrapper) : wrapper )[ 0 ];
+			if ( !! wrap ) {
+				let  cont = self.toArray(content);
 
-			self.prependTo(wrap, null, cont[ 0 ]);
-			cont.forEach( c => self.appendTo(c, wrap) );
+				self.prependTo(wrap, null, cont[ 0 ]);
+				cont.forEach( c => self.appendTo(c, wrap) );
+			}
 		}
 		return  wrap;
 	};
+
+
+	// Object for feature-detection (modern browsers only --e.g., uses lambdas)
+	self.detected = Object.create(null, {
+		// Detect support for passive event listeners
+		// Reference: https://github.com/WICG/EventListenerOptions/blob/gh-pages/explainer.md#feature-detection
+		'passiveEvents': self.propDef(self.lazy( ( ) => {
+			var  supported = false;
+			try {
+				var  opts = Object.defineProperty({ }, 'passive', self.propDef( ( ) => supported = true ));
+				window.addEventListener('testPassive', null, opts);
+				window.removeEventListener('testPassive', null, opts);
+			} catch ( e ) {
+			}
+			return  supported;
+		} )),
+	});
 
 	// ----------------------------------------------------
 	// Intended for Internal Use
